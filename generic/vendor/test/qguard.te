@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+# Copyright (c) 2020, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -25,10 +25,32 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 # IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# To register imsrcsd to hwBinder
-hwbinder_use(vendor_hal_rcsservice)
-# add IUceSerive and IService to Hidl interface
-add_hwservice(vendor_hal_rcsservice, vendor_hal_imsrcsd_hwservice)
-add_hwservice(vendor_hal_rcsservice, vendor_hal_imscallinfo_hwservice)
-#add imsfactory to HIDl interface
-add_hwservice(vendor_hal_rcsservice, vendor_hal_imsfactory_hwservice)
+type vendor_qguard, domain, mlstrustedsubject;
+type vendor_qguard_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(vendor_qguard)
+
+userdebug_or_eng(`
+  allow vendor_qguard self:global_capability_class_set kill;
+  allow vendor_qguard kmsg_device:chr_file w_file_perms;
+  allow vendor_qguard domain:process { signal sigstop sigkill };
+
+  # sh
+  allow vendor_qguard { vendor_shell_exec vendor_toolbox_exec }:file rx_file_perms;
+
+  # look through /proc
+  allow vendor_qguard domain:dir r_dir_perms;
+  allow vendor_qguard domain:file r_file_perms;
+  allow vendor_qguard domain:lnk_file read;
+
+  # write into hung_task_enh
+  allow vendor_qguard proc:file { write open };
+
+  # write into sysrq
+  allow vendor_qguard proc_sysrq:file w_file_perms;
+
+  # reboot
+  set_prop(vendor_qguard, powerctl_prop)
+
+  dontaudit vendor_qguard default_prop:file read;
+')
